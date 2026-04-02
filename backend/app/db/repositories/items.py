@@ -16,13 +16,16 @@ from app.db.queries.tables import (
 from app.db.repositories.base import BaseRepository
 from app.db.repositories.profiles import ProfilesRepository
 from app.db.repositories.tags import TagsRepository
-from app.models.domain.items import Item
+from app.models.domain.items import Item, ItemWithDefaultImage
 from app.models.domain.users import User
 
 SELLER_USERNAME_ALIAS = "seller_username"
 SLUG_ALIAS = "slug"
 
 CAMEL_OR_SNAKE_CASE_TO_WORDS = r"^[a-z\d_\-]+|[A-Z\d_\-][^A-Z\d_\-]*"
+
+# Default Image URL
+DEFAULT_ITEM_IMAGE_URL = "https://cdn.pixabay.com/photo/2021/12/12/20/00/play-6865967_1280.jpg"
 
 
 class ItemsRepository(BaseRepository):  # noqa: WPS214
@@ -227,7 +230,7 @@ class ItemsRepository(BaseRepository):  # noqa: WPS214
         user: User,
         limit: int = 20,
         offset: int = 0,
-    ) -> List[Item]:
+    ) -> List[ItemWithDefaultImage]:
         items_rows = await queries.get_items_for_feed(
             self.connection,
             follower_username=user.username,
@@ -249,7 +252,7 @@ class ItemsRepository(BaseRepository):  # noqa: WPS214
         *,
         slug: str,
         requested_user: Optional[User] = None,
-    ) -> Item:
+    ) -> ItemWithDefaultImage:
         item_row = await queries.get_item_by_slug(self.connection, slug=slug)
         if item_row:
             return await self._get_item_from_db_record(
@@ -308,20 +311,20 @@ class ItemsRepository(BaseRepository):  # noqa: WPS214
         slug: str,
         seller_username: str,
         requested_user: Optional[User],
-    ) -> Item:
+    ) -> ItemWithDefaultImage:
         title_query = Query.from_(items).select(items.title).where(items.slug == slug)
         result_rows = await self.connection.fetch(title_query.get_sql())
         if not len(result_rows):
             raise Exception(f'No item with slug {slug}')
         title = result_rows[0]['title']
 
-        return Item(
+        return ItemWithDefaultImage(
             id_=item_row["id"],
             slug=slug,
             title=title,
             description=item_row["description"],
             body=item_row["body"],
-            image=item_row["image"],
+            image=item_row["image"] or DEFAULT_ITEM_IMAGE_URL,
             seller=await self._profiles_repo.get_profile_by_username(
                 username=seller_username,
                 requested_user=requested_user,
