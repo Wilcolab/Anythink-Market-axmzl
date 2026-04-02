@@ -15,3 +15,6 @@ class Item(IDModelMixin, DateTimeModelMixin, RWModel):
     favorites_count: int
     image: Optional[str]
     body: Optional[str]
+
+class ItemWithDefaultImage (Item):
+    image: str
